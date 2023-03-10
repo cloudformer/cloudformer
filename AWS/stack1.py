@@ -56,7 +56,7 @@ def create_or_update_stack(stack_name, template_file_path, parameters=None, regi
 
 if __name__ == '__main__':
     stack_name = 'MyStack'
-    template_file_path = 'YAML/vpc-2azs.yaml'
+    template_file_path = 'YAML/vpc-1.yaml'
     # parameters = {
     #     # 'BucketName': 'my-bucket',
     #     'Environment': 'prod'
