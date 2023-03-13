@@ -1,26 +1,39 @@
 import boto3
 import json
+def list_ec2(region = 'ap-east-1'):
 
-region = 'ap-east-1'
+    # 创建 EC2 客户端
+    ec2 = boto3.client('ec2', region_name=region)
 
-# 创建 EC2 客户端
-ec2 = boto3.client('ec2', region_name=region)
+    # 使用 describe_instances 方法列出所有 EC2 实例
+    response = ec2.describe_instances()
 
-# 使用 describe_instances 方法列出所有 EC2 实例
-response = ec2.describe_instances()
+    # 提取所有实例的信息并整理为 JSON 格式
+    instances = []
+    for reservation in response['Reservations']:
+        for instance in reservation['Instances']:
+            instance_info = {
+                'region': region,
+                'AvailabilityZone' : instance['Placement']['AvailabilityZone'],
+                'instance_id': instance['InstanceId'],
+                'instance_type': instance['InstanceType'],
+                'state': instance['State']['Name'],
+                'instance_platform': instance['PlatformDetails'],
+                'instance_PublicIp': instance['PublicIpAddress'],
+                'launch_time': instance['LaunchTime'].strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+            }
+            instances.append(instance_info)
+    json_result = json.dumps(instances, indent=4)
+    print(json_result)
+def listall_ec2():
+    region = 'us-west-2'
+    # 创建一个EC2客户端
+    ec2_client = boto3.client('ec2', region_name=region)
 
-# 提取所有实例的信息并整理为 JSON 格式
-instances = []
-for reservation in response['Reservations']:
-    for instance in reservation['Instances']:
-        instance_info = {
-            'instance_id': instance['InstanceId'],
-            'instance_type': instance['InstanceType'],
-            'state': instance['State']['Name'],
-            'instance_platform': instance['PlatformDetails'],
-            'instance_PublicIp': instance['PublicIpAddress'],
-            'launch_time': instance['LaunchTime'].strftime('%Y-%m-%dT%H:%M:%S.%fZ')
-        }
-        instances.append(instance_info)
-json_result = json.dumps(instances, indent=4)
-print(json_result)
+    # 使用describe_regions方法获取所有可用区域信息
+    regions = [region['RegionName'] for region in ec2_client.describe_regions()['Regions']]
+    for region in regions:
+        list_ec2(region=region)
+if __name__ == '__main__':
+    list_ec2()
+    # listall_ec2()
