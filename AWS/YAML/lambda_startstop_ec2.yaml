@@ -1,0 +1,84 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+  EC2StartLambdaFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Code:
+        ZipFile: |
+          import boto3
+
+          def lambda_handler(event, context):
+              ec2 = boto3.resource('ec2')
+              instance = ec2.Instance('i-043fba21af66047c5')
+              instance.start()
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaRole.Arn
+      Runtime: python3.8
+      Timeout: 30
+  StartScheduledRule:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Name: 'DailyStartEC2Instances'
+      ScheduleExpression: 'cron(0 9 * * ? *)' #每天上午9点执行
+      Targets:
+        - Arn: !GetAtt EC2StartLambdaFunction.Arn
+          Id: 'TargetFunctionV1'
+
+  LambdaStartExecutionPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref EC2StartLambdaFunction
+      Principal: 'events.amazonaws.com'
+      SourceArn: !GetAtt StartScheduledRule.Arn
+  EC2StopLambdaFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Code:
+        ZipFile: |
+          import boto3
+
+          def lambda_handler(event, context):
+              ec2 = boto3.resource('ec2')
+              instance = ec2.Instance('i-043fba21af66047c5')
+              instance.stop()
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaRole.Arn
+      Runtime: python3.8
+      Timeout: 30
+  StopScheduledRule:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Name: 'DailyStopEC2Instances'
+      ScheduleExpression: 'cron(0 10 * * ? *)' #每天上午9点执行
+      Targets:
+        - Arn: !GetAtt EC2StopLambdaFunction.Arn
+          Id: 'TargetFunctionV1'
+  LambdaStopExecutionPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref EC2StopLambdaFunction
+      Principal: 'events.amazonaws.com'
+      SourceArn: !GetAtt StopScheduledRule.Arn
+  LambdaRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: 'sts:AssumeRole'
+            Effect: 'Allow'
+            Principal:
+              Service:
+                - 'lambda.amazonaws.com'
+        Version: '2012-10-17'
+      Path: '/'
+      Policies:
+        - PolicyName: 'ec2-start-stop'
+          PolicyDocument:
+            Statement:
+              - Action:
+                  - 'ec2:Start*'
+                  - 'ec2:Stop*'
+                Effect: 'Allow'
+                Resource: '*'

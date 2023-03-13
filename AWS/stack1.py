@@ -38,7 +38,10 @@ def create_or_update_stack(stack_name, template_file_path, parameters=None, regi
             print(f" - Stack events for CloudFormation stack '{stack_name}':")
             events = cf.describe_stack_events(StackName=stack_name)
             for event in events['StackEvents']:
-                print(f" - {event['ResourceType']} {event['LogicalResourceId']} {event['ResourceStatus']}")
+            #    print(f" - {event['ResourceType']} {event['LogicalResourceId']} {event['ResourceStatus']}")
+                print(f" - {event['Timestamp'].isoformat()}  - {event['ResourceStatus']} - \
+                               {event['ResourceType']}  - {event['LogicalResourceId']}")
+
         except Exception as ex:
             print('YAML文件未更新，或者文件有错误！')
             print(ex)
@@ -68,18 +71,35 @@ def create_or_update_stack(stack_name, template_file_path, parameters=None, regi
             print(f" - Stack events for CloudFormation stack '{stack_name}':")
             events = cf.describe_stack_events(StackName=stack_name)
             for event in events['StackEvents']:
-                print(f"  - {event['ResourceType']} {event['LogicalResourceId']} {event['ResourceStatus']}")
+                print(f" - {event['Timestamp'].isoformat()}  - {event['ResourceStatus']} - \
+                               {event['ResourceType']}  - {event['LogicalResourceId']}")
         except Exception as ex:
             print('YAML文件有错误！')
             print(ex)
 
+    response = cf.list_exports()
+    exports = response['Exports']
 
+    if len(exports) > 0:
+        print('Stack exports:')
+        for export in exports:
+            print(export['Name'],export['Value'])
+        print(response)
+    else:
+        print('Stack has no exports.')
+
+    if stack_exists:
+        print('Stack updated successfully.')
+    else:
+        print('Stack created successfully.')
 
 if __name__ == '__main__':
-    stack_name = 'MyStack'
-    template_file_path = 'YAML/vpc-1.yaml'
+    stack_name = 'cfn-1vpc'
+    stack_name = 'cfn-2ec2'
+    template_file_path = 'YAML/1_EC2/ec2-full.yaml'
     # parameters = {
     #     # 'BucketName': 'my-bucket',
     #     'Environment': 'prod'
     # }
-    create_or_update_stack(stack_name, template_file_path)
+    # create_or_update_stack(stack_name, template_file_path)
+    create_or_update_stack(stack_name, template_file_path, parameters=None, region_name='us-east-1')
