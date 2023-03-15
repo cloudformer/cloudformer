@@ -21,153 +21,90 @@ Parameters:
     Description: The key used to access the instance.
     Default: aws-key
 Resources:
-#  VPC:
-#    Type: AWS::EC2::VPC
-#    Properties:
-#      CidrBlock: 10.0.0.0/16
-#      EnableDnsSupport: true
-#      EnableDnsHostnames: true
-#      InstanceTenancy: default
-#      Tags:
-#        - Key: Name
-#          Value: Linux VPC
-#  InternetGateway:
-#    Type: AWS::EC2::InternetGateway
-#  VPCGatewayAttachment:
-#    Type: AWS::EC2::VPCGatewayAttachment
-#    Properties:
-#      VpcId: !Ref VPC
-#      InternetGatewayId: !Ref InternetGateway
-#  SubnetA:
-#    Type: AWS::EC2::Subnet
-#    Properties:
-#      AvailabilityZone: us-east-1a
-#      VpcId: !Ref VPC
-#      CidrBlock: 10.0.0.0/24
-#      MapPublicIpOnLaunch: true
-#  RouteTable:
-#    Type: AWS::EC2::RouteTable
-#    Properties:
-#      VpcId: !Ref VPC
-#  InternetRoute:
-#    Type: AWS::EC2::Route
-#    DependsOn: InternetGateway
-#    Properties:
-#      DestinationCidrBlock: 0.0.0.0/0
-#      GatewayId: !Ref InternetGateway
-#      RouteTableId: !Ref RouteTable
-#  SubnetARouteTableAssociation:
-#    Type: AWS::EC2::SubnetRouteTableAssociation
-#    Properties:
-#      RouteTableId: !Ref RouteTable
-#      SubnetId: !Ref SubnetA
-#  InstanceSecurityGroup:
-#    Type: AWS::EC2::SecurityGroup
-#    Properties:
-#      GroupName: "Internet Group"
-#      GroupDescription: "SSH and web traffic in, all traffic out."
-#      VpcId: !Ref VPC
-#      SecurityGroupIngress:
-#        - IpProtocol: tcp
-#          FromPort: '10933'
-#          ToPort: '10933'
-#          CidrIp:  20.188.245.156/32
-#        - IpProtocol: tcp
-#          FromPort: '10933'
-#          ToPort: '10933'
-#          CidrIp:  52.147.25.42/32
-#        - IpProtocol: tcp
-#          FromPort: '10933'
-#          ToPort: '10933'
-#          CidrIp:  52.147.31.180/32
-#        - IpProtocol: tcp
-#          FromPort: '10933'
-#          ToPort: '10933'
-#          CidrIp:  20.188.244.132/32
-#        - IpProtocol: tcp
-#          FromPort: '10933'
-#          ToPort: '10933'
-#          CidrIp:  52.147.25.94/32
-#        - IpProtocol: tcp
-#          FromPort: '10933'
-#          ToPort: '10933'
-#          CidrIp:  52.147.25.173/32
-#        - IpProtocol: tcp
-#          FromPort: '10933'
-#          ToPort: '10933'
-#          CidrIp:  20.188.245.171/32
-#        - IpProtocol: tcp
-#          FromPort: '10933'
-#          ToPort: '10933'
-#          CidrIp:  20.188.245.7/32
-#        - IpProtocol: tcp
-#          FromPort: '10933'
-#          ToPort: '10933'
-#          CidrIp:  20.188.244.147/32
-#        - IpProtocol: tcp
-#          FromPort: '10933'
-#          ToPort: '10933'
-#          CidrIp:  20.188.244.240/32
-#        - IpProtocol: tcp
-#          FromPort: '22'
-#          ToPort: '22'
-#          CidrIp:  !Sub ${WorkstationIp}/32
-#      SecurityGroupEgress:
-#        - IpProtocol: -1
-#          CidrIp: 0.0.0.0/0
+  EC2Role:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: '/'
+  RolePolicies:
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName: "root"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action: "*"
+            Resource: "*"
+      Roles:
+        - !Ref EC2Role
+  EC2RoleInstanceProfile:
+    Type: "AWS::IAM::InstanceProfile"
+    Properties:
+      Path: '/'
+      Roles:
+        - !Ref EC2Role
 
   Linux:
     Type: 'AWS::EC2::Instance'
     Properties:
-      SubnetId:
-        "Fn::ImportValue": !Sub cfn-1vpc-EC2-SUBNET
+#      SubnetId:
+#        "Fn::ImportValue": !Sub cfn-1vpc-EC2-SUBNET
+#      SecurityGroupIds:
+#        - "Fn::ImportValue": !Sub cfn-1vpc-EC2-SG
       ImageId: !Ref AMI
       InstanceType:
         Ref: InstanceTypeParameter
       KeyName: !Ref Key
-      SecurityGroupIds:
-        - "Fn::ImportValue": !Sub cfn-1vpc-EC2-SG
+      IamInstanceProfile: !Ref EC2RoleInstanceProfile
       BlockDeviceMappings:
         - DeviceName: /dev/xvda
           Ebs:
             VolumeSize: 8
+      NetworkInterfaces:
+        - NetworkInterfaceId:
+            Ref: NetworkInterface
+          DeviceIndex: '0'
       Tags:
         -
           Key: Appplication
           Value: Linux Server
         -
-          Key: Domain
-          Value: None
-        -
-          Key: Environment
-          Value: Test
-        -
-          Key: LifeTime
-          Value: Transient
-        -
           Key: Name
-          Value: Linux Server
+          Value: Linux Server1
         -
           Key: OS
           Value: Linux
-        -
-          Key: OwnerContact
-          Value: "@matthewcasperson"
-        -
-          Key: Purpose
-          Value: Support Test Instance
-        -
-          Key: Source
-          Value: CloudForation Script in Octopus Deploy
       UserData:
         Fn::Base64: |
           #cloud-boothook
           #!/bin/bash
           echo "Hello World!"
+  NetworkInterface:
+    Type: "AWS::EC2::NetworkInterface"
+    Properties:
+      Description: String
+      GroupSet:
+        - "Fn::ImportValue": !Sub cfn-1vpc-EC2-SG
+      SubnetId:
+        "Fn::ImportValue": !Sub cfn-1vpc-EC2-SUBNET
+      Tags:
+        - Key: Role
+          Value: Test Instance
+
 Outputs:
   PublicIp:
     Value:
       Fn::GetAtt:
         - Linux
         - PublicIp
-    Description: Server's PublicIp Address
+    Export:
+      Name: !Sub ${AWS::StackName}-EC2

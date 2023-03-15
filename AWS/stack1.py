@@ -17,7 +17,7 @@ def create_or_update_stack(stack_name, template_file_path, parameters=None, regi
         # Stack exists, update it
         print('AWS堆栈存在，对YAML进行升级')
         try:
-            cf.update_stack(
+            response = cf.update_stack(
                 StackName=stack_name,
                 TemplateBody=template_body,
                 Parameters=parameters if parameters else [],
@@ -40,7 +40,7 @@ def create_or_update_stack(stack_name, template_file_path, parameters=None, regi
             for event in events['StackEvents']:
             #    print(f" - {event['ResourceType']} {event['LogicalResourceId']} {event['ResourceStatus']}")
                 print(f" - {event['Timestamp'].isoformat()}  - {event['ResourceStatus']} - \
-                               {event['ResourceType']}  - {event['LogicalResourceId']}")
+                {event['ResourceType']}  - {event['LogicalResourceId']}")
 
         except Exception as ex:
             print('YAML文件未更新，或者文件有错误！')
@@ -51,7 +51,7 @@ def create_or_update_stack(stack_name, template_file_path, parameters=None, regi
         # Stack doesn't exist, create it
         print(f"创建  {stack_name}  堆栈")
         try:
-            cf.create_stack(
+            response = cf.create_stack(
                 StackName=stack_name,
                 TemplateBody=template_body,
                 Parameters=parameters if parameters else [],
@@ -72,19 +72,20 @@ def create_or_update_stack(stack_name, template_file_path, parameters=None, regi
             events = cf.describe_stack_events(StackName=stack_name)
             for event in events['StackEvents']:
                 print(f" - {event['Timestamp'].isoformat()}  - {event['ResourceStatus']} - \
-                               {event['ResourceType']}  - {event['LogicalResourceId']}")
+                {event['ResourceType']}  - {event['LogicalResourceId']}")
         except Exception as ex:
             print('YAML文件有错误！')
             print(ex)
 
-    response = cf.list_exports()
-    exports = response['Exports']
+    stack_status = response['StackId']
+    exports = cf.list_exports()['Exports']
 
     if len(exports) > 0:
         print('Stack exports:')
         for export in exports:
-            print(export['Name'],export['Value'])
-        print(response)
+            if export['ExportingStackId'] == stack_status:
+                print(f" - {export['Name']}  -  {export['Value']}")
+        # print(response)
     else:
         print('Stack has no exports.')
 

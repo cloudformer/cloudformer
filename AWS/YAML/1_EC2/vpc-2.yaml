@@ -1,0 +1,178 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Deploy a VPC
+Outputs:
+  AZ1:
+    Description: Availability Zone 1
+    Value:
+      Fn::GetAtt:
+      - PublicSubnet1
+      - AvailabilityZone
+  AZ2:
+    Description: Availability Zone 2
+    Value:
+      Fn::GetAtt:
+      - PublicSubnet2
+      - AvailabilityZone
+  VPC:
+    Description: VPC
+    Value:
+      Ref: VPC
+    Export:
+      Name: !Sub ${AWS::StackName}-EC2-VPC1
+  PublicSubnet1:
+    Description: subnet ID
+    Value: !Ref PublicSubnet1
+    Export:
+      Name: !Sub ${AWS::StackName}-EC2-SUBNET
+  EC2SG:
+    Description: subnet ID
+    Value: !Ref InstanceSecurityGroup
+    Export:
+      Name: !Sub ${AWS::StackName}-EC2-SG
+
+Resources:
+  AttachGateway:
+    Properties:
+      InternetGatewayId:
+        Ref: InternetGateway
+      VpcId:
+        Ref: VPC
+    Type: AWS::EC2::VPCGatewayAttachment
+  InternetGateway:
+    Properties:
+      Tags:
+      - Key: Name
+        Value: Lab Internet Gateway
+    Type: AWS::EC2::InternetGateway
+  PrivateRouteTable:
+    Properties:
+      Tags:
+      - Key: Name
+        Value: Private Route Table
+      VpcId:
+        Ref: VPC
+    Type: AWS::EC2::RouteTable
+  PrivateSubnet1:
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+        - '0'
+        - Fn::GetAZs: ''
+      CidrBlock: 10.0.1.0/24
+      Tags:
+      - Key: Name
+        Value: Private Subnet 1
+      VpcId:
+        Ref: VPC
+    Type: AWS::EC2::Subnet
+  PrivateSubnet2:
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+        - '1'
+        - Fn::GetAZs: ''
+      CidrBlock: 10.0.3.0/24
+      Tags:
+      - Key: Name
+        Value: Private Subnet 2
+      VpcId:
+        Ref: VPC
+    Type: AWS::EC2::Subnet
+  PrivateSubnetRouteTableAssociation1:
+    Properties:
+      RouteTableId:
+        Ref: PrivateRouteTable
+      SubnetId:
+        Ref: PrivateSubnet1
+    Type: AWS::EC2::SubnetRouteTableAssociation
+  PrivateSubnetRouteTableAssociation2:
+    Properties:
+      RouteTableId:
+        Ref: PrivateRouteTable
+      SubnetId:
+        Ref: PrivateSubnet2
+    Type: AWS::EC2::SubnetRouteTableAssociation
+  PublicRoute:
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: InternetGateway
+      RouteTableId:
+        Ref: PublicRouteTable
+    Type: AWS::EC2::Route
+  PublicRouteTable:
+    Properties:
+      Tags:
+      - Key: Name
+        Value: Public Route Table
+      VpcId:
+        Ref: VPC
+    Type: AWS::EC2::RouteTable
+  PublicSubnet1:
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+        - '0'
+        - Fn::GetAZs: ''
+      MapPublicIpOnLaunch: true
+      CidrBlock: 10.0.0.0/24
+      Tags:
+      - Key: Name
+        Value: Public Subnet 1
+      VpcId:
+        Ref: VPC
+    Type: AWS::EC2::Subnet
+  PublicSubnet2:
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+        - '1'
+        - Fn::GetAZs: ''
+      MapPublicIpOnLaunch: true
+      CidrBlock: 10.0.2.0/24
+      Tags:
+      - Key: Name
+        Value: Public Subnet 2
+      VpcId:
+        Ref: VPC
+    Type: AWS::EC2::Subnet
+  PublicSubnetRouteTableAssociation1:
+    Properties:
+      RouteTableId:
+        Ref: PublicRouteTable
+      SubnetId:
+        Ref: PublicSubnet1
+    Type: AWS::EC2::SubnetRouteTableAssociation
+  PublicSubnetRouteTableAssociation2:
+    Properties:
+      RouteTableId:
+        Ref: PublicRouteTable
+      SubnetId:
+        Ref: PublicSubnet2
+    Type: AWS::EC2::SubnetRouteTableAssociation
+  VPC:
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      Tags:
+      - Key: Name
+        Value: Lab VPC
+    Type: AWS::EC2::VPC
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: "Internet Group"
+      GroupDescription: "SSH and web traffic in, all traffic out."
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '8000'
+          ToPort: '8080'
+          CidrIp: 1.46.0.0/15
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
