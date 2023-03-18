@@ -1,6 +1,7 @@
 import boto3
 import json
 def list_ec2(region = 'ap-east-1'):
+    # 修改get的到字典的对象
 
     # 创建 EC2 客户端
     ec2 = boto3.client('ec2', region_name=region)
@@ -14,13 +15,13 @@ def list_ec2(region = 'ap-east-1'):
         for instance in reservation['Instances']:
             instance_info = {
                 'region': region,
-                'AvailabilityZone' : instance['Placement']['AvailabilityZone'],
-                'instance_id': instance['InstanceId'],
-                'instance_type': instance['InstanceType'],
-                'state': instance['State']['Name'],
-                'instance_platform': instance['PlatformDetails'],
-                'instance_PublicIp': instance['PublicIpAddress'],
-                'launch_time': instance['LaunchTime'].strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+                'AvailabilityZone' : instance.get('Placement')['AvailabilityZone'],
+                'instance_id': instance.get('InstanceId'),
+                'instance_type': instance.get('InstanceType'),
+                'state': instance.get('State')['Name'],
+                'instance_platform': instance.get('PlatformDetails'),
+                'instance_PublicIp': instance.get('PublicIpAddress'),
+                'launch_time': instance.get('LaunchTime').strftime('%Y-%m-%dT%H:%M:%S.%fZ')
             }
             instances.append(instance_info)
     json_result = json.dumps(instances, indent=4)
@@ -52,6 +53,6 @@ def list_running_ec2(region='ap-east-1'):
             instances.append(instance['InstanceId'])
     return instances
 if __name__ == '__main__':
-    # print(list_ec2())
-    listall_ec2()
+    print(list_ec2())
+    # listall_ec2()
     # print(list_running_ec2())
