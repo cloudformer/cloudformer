@@ -1,4 +1,13 @@
 AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  routetableidParameter:
+    Type: String
+    Default: 'rtb-0be06408c402a9185'
+    Description: Enter route_table ID . Default is RTB.
+  newgatewayidParameter:
+    Type: String
+    Default: 'eni-02101d5460aaa74d6'
+    Description: Enter new_gateway ID . Default is ENI.
 
 Resources:
   EC2StartLambdaFunction:
@@ -7,11 +16,39 @@ Resources:
       Code:
         ZipFile: |
           import boto3
-
+          import json
           def lambda_handler(event, context):
-              ec2 = boto3.resource('ec2')
-              instance = ec2.Instance('i-043fba21af66047c5')
-              instance.start()
+                         
+              region = 'us-east-1'
+              ec2 = boto3.client('ec2',region_name=region)
+
+              route_table_id = 'rtb-0be06408c402a9185'
+              new_gateway_id = 'eni-02101d5460aaa74d6'
+              # new_gateway_id = 'eni-0676607edac0dab2b'
+
+              response = ec2.describe_route_tables(
+                  RouteTableIds=[route_table_id]
+              )
+              # print(json.dumps(response, indent=4))
+              # get the default route of the route table
+
+              for route in response['RouteTables'][0].get('Routes'):
+                  if route.get('DestinationCidrBlock') == '0.0.0.0/0':
+                      old_gateway_id = route.get('NetworkInterfaceId')
+                      break
+              response = ec2.describe_route_tables(
+                  RouteTableIds=[route_table_id]
+              )
+
+
+              # replace the default route with the new gateway
+              response = ec2.replace_route(
+                  RouteTableId=route_table_id,
+                  DestinationCidrBlock='0.0.0.0/0',
+                  NetworkInterfaceId=new_gateway_id
+              )
+              print(f"The old gateway is {old_gateway_id}.")
+              print(f"change the new gateway is {new_gateway_id}.")
       Handler: index.lambda_handler
       Role: !GetAtt LambdaRole.Arn
       Runtime: python3.8
@@ -32,36 +69,36 @@ Resources:
       FunctionName: !Ref EC2StartLambdaFunction
       Principal: 'events.amazonaws.com'
       SourceArn: !GetAtt StartScheduledRule.Arn
-  EC2StopLambdaFunction:
-    Type: 'AWS::Lambda::Function'
-    Properties:
-      Code:
-        ZipFile: |
-          import boto3
-
-          def lambda_handler(event, context):
-              ec2 = boto3.resource('ec2')
-              instance = ec2.Instance('i-043fba21af66047c5')
-              instance.stop()
-      Handler: index.lambda_handler
-      Role: !GetAtt LambdaRole.Arn
-      Runtime: python3.8
-      Timeout: 30
-  StopScheduledRule:
-    Type: 'AWS::Events::Rule'
-    Properties:
-      Name: 'DailyStopEC2Instances'
-      ScheduleExpression: 'cron(0 10 * * ? *)' #每天上午9点执行
-      Targets:
-        - Arn: !GetAtt EC2StopLambdaFunction.Arn
-          Id: 'TargetFunctionV1'
-  LambdaStopExecutionPermission:
-    Type: 'AWS::Lambda::Permission'
-    Properties:
-      Action: 'lambda:InvokeFunction'
-      FunctionName: !Ref EC2StopLambdaFunction
-      Principal: 'events.amazonaws.com'
-      SourceArn: !GetAtt StopScheduledRule.Arn
+#  EC2StopLambdaFunction:
+#    Type: 'AWS::Lambda::Function'
+#    Properties:
+#      Code:
+#        ZipFile: |
+#          import boto3
+#
+#          def lambda_handler(event, context):
+#              ec2 = boto3.resource('ec2')
+#              instance = ec2.Instance('i-043fba21af66047c5')
+#              instance.stop()
+#      Handler: index.lambda_handler
+#      Role: !GetAtt LambdaRole.Arn
+#      Runtime: python3.8
+#      Timeout: 30
+#  StopScheduledRule:
+#    Type: 'AWS::Events::Rule'
+#    Properties:
+#      Name: 'DailyStopEC2Instances'
+#      ScheduleExpression: 'cron(0 10 * * ? *)' #每天上午9点执行
+#      Targets:
+#        - Arn: !GetAtt EC2StopLambdaFunction.Arn
+#          Id: 'TargetFunctionV1'
+#  LambdaStopExecutionPermission:
+#    Type: 'AWS::Lambda::Permission'
+#    Properties:
+#      Action: 'lambda:InvokeFunction'
+#      FunctionName: !Ref EC2StopLambdaFunction
+#      Principal: 'events.amazonaws.com'
+#      SourceArn: !GetAtt StopScheduledRule.Arn
   LambdaRole:
     Type: 'AWS::IAM::Role'
     Properties:
@@ -79,7 +116,8 @@ Resources:
           PolicyDocument:
             Statement:
               - Action:
-                  - 'ec2:Start*'
-                  - 'ec2:Stop*'
+                  - "ec2:DescribeRouteTables"
+                  - "ec2:DescribeVpcs"
+                  - "ec2:ReplaceRoute"
                 Effect: 'Allow'
                 Resource: '*'

@@ -4,8 +4,8 @@ region = 'us-east-1'
 ec2 = boto3.client('ec2',region_name=region)
 
 route_table_id = 'rtb-0be06408c402a9185'
-new_gateway_id = 'eni-02101d5460aaa74d6'
-# new_gateway_id = 'eni-0676607edac0dab2b'
+# new_gateway_id = 'eni-02101d5460aaa74d6'
+new_gateway_id = 'eni-0676607edac0dab2b'
 
 response = ec2.describe_route_tables(
     RouteTableIds=[route_table_id]

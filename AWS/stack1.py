@@ -95,9 +95,9 @@ def create_or_update_stack(stack_name, template_file_path, parameters=None, regi
         print('Stack created successfully.')
 
 if __name__ == '__main__':
-    stack_name = 'cfn-1vpc'
-    stack_name = 'cfn-2ec2'
-    template_file_path = 'YAML/1_EC2/ec2-full.yaml'
+    # stack_name = 'cfn-1vpc'
+    stack_name = 'cfn_lambda_changeroute'
+    template_file_path = 'YAML/lambda_changeroute.yaml'
     # parameters = {
     #     # 'BucketName': 'my-bucket',
     #     'Environment': 'prod'
